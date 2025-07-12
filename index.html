@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Question Paper Editor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f9f9f9;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background: #000;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px 5px 15px 0;
+    }
+    .question-block {
+      background: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 4px solid #000;
+      position: relative;
+    }
+    .mcq-option {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .mcq-option input {
+      width: 90%;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Offline Question Paper Editor</h2>
+
+  <label>Institute Name:</label>
+  <input type="text" id="institute" value="Your Institute Name">
+
+  <label>Class:</label>
+  <input type="text" id="class" value="10">
+
+  <label>Subject:</label>
+  <input type="text" id="subject" value="English">
+
+  <label>Total Score:</label>
+  <input type="text" id="score" value="50">
+
+  <label>Duration:</label>
+  <input type="text" id="duration" value="1 Hour">
+
+  <label>Watermark Image (optional):</label>
+  <input type="file" id="watermarkImageInput" accept="image/*">
+
+  <div id="questions-area"></div>
+
+  <button onclick="addNormalQuestion()">+ Add Normal Question</button>
+  <button onclick="addMCQQuestion()">+ Add MCQ Question</button>
+  <button onclick="generateExportPage()">⬇ Export to PDF</button>
+
+  <script>
+    let watermarkBase64 = "";
+
+    document.getElementById("watermarkImageInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          watermarkBase64 = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function createDeleteButton(block) {
+      const btn = document.createElement("button");
+      btn.textContent = "Delete";
+      btn.className = "delete-btn";
+      btn.onclick = () => block.remove();
+      return btn;
+    }
+
+    function addNormalQuestion() {
+      const block = document.createElement("div");
+      block.className = "question-block";
+      block.innerHTML = `
+        <textarea placeholder="Type your question here"></textarea>
+        <input type="text" placeholder="Marks (e.g. 2)">
+        <input type="hidden" value="normal">
+      `;
+      block.appendChild(createDeleteButton(block));
+      document.getElementById("questions-area").appendChild(block);
+    }
+
+    function addMCQQuestion() {
+      const block = document.createElement("div");
+      block.className = "question-block";
+      block.innerHTML = `
+        <textarea placeholder="Type MCQ question here"></textarea>
+        <div class="mcq-option">a) <input type="text" placeholder="Option A"></div>
+        <div class="mcq-option">b) <input type="text" placeholder="Option B"></div>
+        <div class="mcq-option">c) <input type="text" placeholder="Option C"></div>
+        <div class="mcq-option">d) <input type="text" placeholder="Option D"></div>
+        <input type="text" placeholder="Marks (e.g. 1)">
+        <input type="hidden" value="mcq">
+      `;
+      block.appendChild(createDeleteButton(block));
+      document.getElementById("questions-area").appendChild(block);
+    }
+
+    function generateExportPage() {
+      const data = {
+        institute: document.getElementById("institute").value,
+        class: document.getElementById("class").value,
+        subject: document.getElementById("subject").value,
+        score: document.getElementById("score").value,
+        duration: document.getElementById("duration").value,
+        watermarkImage: watermarkBase64,
+        questions: []
+      };
+
+      document.querySelectorAll(".question-block").forEach(block => {
+        const type = block.querySelector("input[type='hidden']").value;
+        const text = block.querySelector("textarea").value;
+        const inputs = block.querySelectorAll("input[type='text']");
+        const marks = inputs[inputs.length - 1].value;
+        let options = [];
+        if (type === "mcq") {
+          const opts = block.querySelectorAll(".mcq-option input");
+          options = Array.from(opts).map(opt => opt.value);
+        }
+        data.questions.push({ type, text, marks, options });
+      });
+
+      const encoded = encodeURIComponent(JSON.stringify(data));
+      window.open("exportpage.html?data=" + encoded, "_blank");
+    }
+  </script>
+
+</body>
+</html>

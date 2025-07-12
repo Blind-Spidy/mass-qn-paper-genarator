@@ -1,0 +1,169 @@
+<!-- exportpage.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PDF Export</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    #paper-container {
+      font-family: Arial, sans-serif;
+      padding: 20mm;
+      width: 210mm;
+      background: white;
+      color: #000;
+      position: relative;
+    }
+    h2 {
+      text-align: center;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin-bottom: 5px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .center-line {
+      text-align: center;
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    hr {
+      border: 0;
+      border-top: 2px solid #000;
+      margin: 15px 0;
+    }
+    .question-section {
+      position: relative;
+    }
+    .question {
+      margin: 20px 0;
+    }
+    .qtext {
+      white-space: pre-wrap;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .marks {
+      float: right;
+      font-weight: bold;
+    }
+    ul {
+      list-style: none;
+      padding-left: 20px;
+    }
+    #watermark-image {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 120%;
+      max-height: 120%;
+      opacity: 0.2;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .question-section > *:not(#watermark-image) {
+      position: relative;
+      z-index: 1;
+    }
+    body {
+      background: #eee;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="paper-container">
+    <h2 id="inst">INSTITUTE NAME</h2>
+    <div class="header-grid">
+      <div id="class">Class:</div>
+      <div id="duration" style="text-align:right">Duration:</div>
+    </div>
+    <div class="center-line" id="subject">SUBJECT</div>
+    <div class="header-grid">
+      <div></div>
+      <div id="score" style="text-align:right">Total Score:</div>
+    </div>
+
+    <hr>
+
+    <div class="question-section">
+      <img id="watermark-image" />
+      <div id="paper"></div>
+    </div>
+  </div>
+
+  <script>
+    function loadData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const data = JSON.parse(decodeURIComponent(urlParams.get("data")));
+
+      document.getElementById("inst").textContent = data.institute;
+      document.getElementById("class").textContent = `Class: ${data.class}`;
+      document.getElementById("duration").textContent = `Duration: ${data.duration}`;
+      document.getElementById("subject").textContent = data.subject;
+      document.getElementById("score").textContent = `Total Score: ${data.score}`;
+
+      if (data.watermarkImage) {
+        document.getElementById("watermark-image").src = data.watermarkImage;
+      }
+
+      let html = "";
+      data.questions.forEach((q, i) => {
+        html += `<div class='question'><pre class='qtext'>${i + 1}. ${q.text}</pre> <span class='marks'>(${q.marks})</span>`;
+        if (q.type === "mcq") {
+          html += `<ul>`;
+          html += `<li>a) ${q.options[0]}</li>`;
+          html += `<li>b) ${q.options[1]}</li>`;
+          html += `<li>c) ${q.options[2]}</li>`;
+          html += `<li>d) ${q.options[3]}</li>`;
+          html += `</ul>`;
+        }
+        html += `</div>`;
+      });
+
+      document.getElementById("paper").innerHTML = html;
+    }
+
+    async function exportPDF() {
+      const container = document.getElementById("paper-container");
+      const canvas = await html2canvas(container, { scale: 2 });
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+      const pdf = new jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageWidth = 210;
+      const pageHeight = 297;
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pageWidth;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save("question-paper.pdf");
+    }
+
+    window.onload = () => {
+      loadData();
+      setTimeout(exportPDF, 800);
+    };
+  </script>
+</body>
+</html>
